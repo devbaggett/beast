@@ -14,7 +14,6 @@ class ListVC: UIViewController {
     @IBOutlet weak var tableView: UITableView!
     
     var tableData: [Note] = []
-    var beastedData: [Beasted] = []
     let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     let saveContext = (UIApplication.shared.delegate as! AppDelegate).saveContext
     
@@ -48,16 +47,28 @@ class ListVC: UIViewController {
     }
     
     func fetchAllNotes() {
-        let noteRequest: NSFetchRequest<Note> = Note.fetchRequest()
+        let request = NSFetchRequest<NSFetchRequestResult>(entityName: "Note")
+        let myPredicate = NSPredicate(format: "beasted == %@", false as CVarArg)
+        request.predicate = myPredicate
+//        let noteRequest: NSFetchRequest<Note> = Note.fetchRequest()
         do {
-            tableData = try context.fetch(noteRequest)
+            tableData = try context.fetch(request) as! [Note]
         } catch {
             print("There was an error. \(error)")
         }
     }
-    
    
     
+}
+
+extension ListVC: BeastedVCDelegate {
+    func beastedPressed(_ indexPath: IndexPath) {
+        tableData[indexPath.row].beasted = true
+        tableData[indexPath.row].date = Date()
+        tableData.remove(at: indexPath.row)
+        saveContext()
+        tableView.deleteRows(at: [indexPath], with: .fade)
+    }
 }
 
 
@@ -94,7 +105,10 @@ extension ListVC: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "BeastCell", for: indexPath) as! BeastCell
         cell.titleLabel.text = tableData[indexPath.row].title
-//        cell.indexPath = indexPath
+        cell.indexPath = indexPath
+        cell.delegate = self
+        
+        
         
         return cell
     }
@@ -103,7 +117,6 @@ extension ListVC: UITableViewDataSource, UITableViewDelegate {
     // DELETE
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath) {
         if (editingStyle == UITableViewCellEditingStyle.delete) {
-            //            print("delete")
             let note = tableData[indexPath.row]
             context.delete(note)
             tableData.remove(at: indexPath.row)
